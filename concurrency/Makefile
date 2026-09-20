@@ -10,9 +10,9 @@ all: check
 one:
 	@gofmt -l $(DIR)
 	go vet ./$(DIR)/
-	go test ./$(DIR)/
-	go test -race ./$(DIR)/
-	go test -race -count=20 -timeout=10m ./$(DIR)/
+	go test -v ./$(DIR)/
+	go test -v -race ./$(DIR)/
+	go test -v -race -count=20 -timeout=10m ./$(DIR)/
 	@echo "$(DIR): всё зелёное"
 
 spinlock:  ; @$(MAKE) --no-print-directory one DIR=01_spinlock
@@ -33,10 +33,10 @@ race:
 	go test -race ./...
 
 stress:
-	go test -race -count=100 -timeout=30m ./...
+	go test -v -race -count=100 -timeout=30m ./...
 
 bench:
-	go test -bench=. -benchmem -run=^$$ ./...
+	go test -v --benchmem -run=^$$ ./...
 
 vet:
 	@gofmt -l .
