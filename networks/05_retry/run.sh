@@ -1,3 +1,3 @@
 #!/bin/sh
 
-exec go run ./cmd/main.go "$@"
+exec ./cmd_main_retry "$@"

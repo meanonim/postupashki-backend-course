@@ -20,7 +20,7 @@ func New(n int) *Barrier {
 }
 
 func (b *Barrier) Wait() {
-	if b.need <= 0 {
+	if b.need == 0 {
 		panic("invalid need count, must be > 0")
 	}
 

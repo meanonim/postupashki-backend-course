@@ -51,11 +51,11 @@ func (rw *RWMutex) Lock() {
 	}
 
 	for {
-		if state := atomic.LoadUint32(&rw.state); state == writer {
+		state := atomic.LoadUint32(&rw.state)
+		if state == writer {
 			return
-		} else {
-			futex.Wait(&rw.state, state)
 		}
+		futex.Wait(&rw.state, state)
 	}
 }
 

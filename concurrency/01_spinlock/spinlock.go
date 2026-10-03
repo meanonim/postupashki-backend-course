@@ -1,6 +1,9 @@
 package spinlock
 
-import "sync/atomic"
+import (
+	"runtime"
+	"sync/atomic"
+)
 
 type Spinlock struct {
 	locked atomic.Bool
@@ -8,6 +11,7 @@ type Spinlock struct {
 
 func (s *Spinlock) Lock() {
 	for !s.TryLock() {
+		runtime.Gosched()
 	}
 }
 
@@ -27,7 +31,6 @@ type TTAS struct {
 
 func (s *TTAS) Lock() {
 	for !s.TryLock() {
-
 	}
 }
 

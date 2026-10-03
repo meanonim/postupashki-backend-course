@@ -2,6 +2,7 @@ package mutex
 
 import (
 	"primitives/internal/futex"
+	"runtime"
 	"sync/atomic"
 )
 
@@ -23,13 +24,17 @@ func (m *Mutex) Lock() {
 
 	// fast-to-slow way
 	// wait while state is held
-	for range 8 {
+	for i := range 64 {
 		if state := atomic.LoadUint32(&m.state); state == contended {
 			// someone waits lock too, no need to go further in cycle
 			break
 		} else if state == free && m.TryLock() {
 			// mutex is free to use, try to lock it asap
 			return
+		}
+
+		if i%16 == 0 {
+			runtime.Gosched()
 		}
 	}
 
@@ -50,9 +55,9 @@ func (m *Mutex) TryLock() bool {
 }
 
 func (m *Mutex) Unlock() {
-	if newState := atomic.SwapUint32(&m.state, free); newState == free {
+	if oldState := atomic.SwapUint32(&m.state, free); oldState == free {
 		panic("unlock of unlocked mutex")
-	} else if newState == contended {
+	} else if oldState == contended {
 		futex.Wake(&m.state)
 	}
 	// if it was held, so no need to wake someone

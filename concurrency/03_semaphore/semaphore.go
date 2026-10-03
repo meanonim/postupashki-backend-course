@@ -1,17 +1,17 @@
 package semaphore
 
 import (
+	"math"
 	"primitives/internal/futex"
 	"strconv"
 	"sync/atomic"
 )
 
-// 32bit: 2^31-1; 64bit: 2^32-1
-const MAX_PERMITS = min(uint64(1<<32-1), uint64(^uint(0)>>1))
+const maxPermits = min(math.MaxUint32, math.MaxInt)
 
 type Semaphore struct {
-	permits    uint32
-	capability uint32
+	permits uint32
+	waiters atomic.Uint32
 }
 
 func New(n int) *Semaphore {
@@ -19,16 +19,20 @@ func New(n int) *Semaphore {
 	if n < 0 {
 		panic("permits number invalid")
 	}
-	if n > int(MAX_PERMITS) {
+	if n > int(maxPermits) {
 		// there is error before this chehck in 32 bit system
-		panic("permits number is greater than maximum " + strconv.FormatUint(MAX_PERMITS, 10))
+		panic("permits number is greater than maximum " + strconv.FormatUint(maxPermits, 10))
 	}
-	return &Semaphore{uint32(n), uint32(n)}
+	return &Semaphore{
+		permits: uint32(n),
+	}
 }
 
 func (s *Semaphore) Acquire() {
 	for !s.TryAcquire() {
+		s.waiters.Add(1)
 		futex.Wait(&s.permits, 0)
+		s.waiters.Add(^uint32(0))
 	}
 }
 
@@ -45,10 +49,13 @@ func (s *Semaphore) TryAcquire() bool {
 func (s *Semaphore) Release() {
 	for {
 		// release can increase counter to 'infinity'
-		if permits := atomic.LoadUint32(&s.permits); uint64(permits) == MAX_PERMITS {
+		if permits := atomic.LoadUint32(&s.permits); uint64(permits) == maxPermits {
 			panic("overflow permits number")
 		} else if atomic.CompareAndSwapUint32(&s.permits, permits, permits+1) {
-			futex.Wake(&s.permits)
+
+			if s.waiters.Load() > 0 {
+				futex.Wake(&s.permits)
+			}
 			return
 		}
 	}
